@@ -1,1 +1,220 @@
 
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Media Automation</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #f2f4f8;
+    color: #222;
+}
+
+.container {
+    max-width: 600px;
+    margin: 20px auto;
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 18px #00000012;
+}
+
+h1 {
+    text-align: center;
+    color: #6c3ce9;
+}
+
+p {
+    color: #555;
+    text-align: center;
+}
+
+label {
+    display: block;
+    margin-top: 18px;
+    font-weight: bold;
+}
+
+textarea, input, select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 18px;
+    border: none;
+    border-radius: 8px;
+    background: #6c3ce9;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #5125c7;
+}
+
+#preview {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f6f2ff;
+    border-radius: 10px;
+    overflow-wrap: anywhere;
+}
+
+#result {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #e9f8ed;
+    display: none;
+}
+
+#photoPreview {
+    max-width: 100%;
+    margin-top: 12px;
+    border-radius: 8px;
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🚀 Social Media Automation</h1>
+<p>अपनी सोशल मीडिया पोस्ट तैयार करें</p>
+
+<label for="platform">सोशल मीडिया प्लेटफॉर्म</label>
+<select id="platform">
+    <option value="Instagram">Instagram</option>
+    <option value="Facebook">Facebook</option>
+</select>
+
+<label for="caption">पोस्ट का कैप्शन लिखें</label>
+<textarea id="caption"
+placeholder="अपनी पोस्ट का कैप्शन लिखें..."></textarea>
+
+<label for="photo">फोटो चुनें</label>
+<input type="file" id="photo" accept="image/*">
+
+<img id="photoPreview" alt="Photo preview">
+
+<label for="schedule">पोस्ट करने का समय चुनें</label>
+<input type="datetime-local" id="schedule">
+
+<button type="button" onclick="previewPost()">
+    👀 पोस्ट का Preview देखें
+</button>
+
+<div id="preview" hidden>
+    <h3 id="previewPlatform"></h3>
+    <p id="previewCaption"></p>
+    <p id="previewTime"></p>
+</div>
+
+<button type="button" onclick="saveDraft()">
+    💾 Draft सेव करें
+</button>
+
+<div id="result" role="status"></div>
+
+</div>
+
+<script>
+const photoInput = document.getElementById("photo");
+const photoPreview = document.getElementById("photoPreview");
+
+photoInput.addEventListener("change", function () {
+    const file = this.files[0];
+
+    if (!file) {
+        photoPreview.style.display = "none";
+        return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+        alert("कृपया एक इमेज चुनें।");
+        this.value = "";
+        return;
+    }
+
+    photoPreview.src = URL.createObjectURL(file);
+    photoPreview.style.display = "block";
+});
+
+function previewPost() {
+    const caption = document.getElementById("caption").value.trim();
+    const platform = document.getElementById("platform").value;
+    const schedule = document.getElementById("schedule").value;
+
+    if (!caption) {
+        alert("पहले पोस्ट का कैप्शन लिखें।");
+        return;
+    }
+
+    document.getElementById("previewPlatform").textContent =
+        "Platform: " + platform;
+
+    document.getElementById("previewCaption").textContent = caption;
+
+    document.getElementById("previewTime").textContent =
+        schedule ? "तय समय: " + new Date(schedule).toLocaleString() :
+        "अभी समय तय नहीं किया गया है।";
+
+    document.getElementById("preview").hidden = false;
+}
+
+function saveDraft() {
+    const caption = document.getElementById("caption").value.trim();
+    const platform = document.getElementById("platform").value;
+    const schedule = document.getElementById("schedule").value;
+
+    if (!caption) {
+        alert("पहले कैप्शन लिखें।");
+        return;
+    }
+
+    const drafts = JSON.parse(
+        localStorage.getItem("socialMediaDrafts") || "[]"
+    );
+
+    drafts.push({
+        platform: platform,
+        caption: caption,
+        schedule: schedule,
+        savedAt: new Date().toISOString()
+    });
+
+    localStorage.setItem("socialMediaDrafts", JSON.stringify(drafts));
+
+    const result = document.getElementById("result");
+    result.textContent = "✅ आपका Draft इस ब्राउज़र में सेव हो गया!";
+    result.style.display = "block";
+}
+</script>
+
+</body>
+</html>
