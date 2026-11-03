@@ -1,0 +1,165 @@
+const express = require("express");
+const cors = require("cors");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+app.use("/uploads", express.static("uploads"));
+
+const DATA_DIR = path.join(__dirname, "data");
+const UPLOAD_DIR = path.join(__dirname, "uploads");
+const DB_FILE = path.join(DATA_DIR, "posts.json");
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+if (!fs.existsSync(DB_FILE)) {
+  fs.writeFileSync(DB_FILE, "[]");
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, crypto.randomUUID() + ext);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      return cb(new Error("Only JPG, PNG and WEBP images are allowed"));
+    }
+    cb(null, true);
+  }
+});
+
+function readPosts() {
+  return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+}
+
+function savePosts(posts) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(posts, null, 2));
+}
+
+// Home
+app.get("/", (req, res) => {
+  res.send("Social Media Automation Backend is Running!");
+});
+
+// Check backend
+app.get("/api/health", (req, res) => {
+  res.json({ success: true, message: "Backend is working!" });
+});
+
+// Create a post or draft
+app.post("/api/posts", upload.single("photo"), (req, res) => {
+  try {
+    const { platform, caption, scheduledAt } = req.body;
+
+    if (!["Instagram", "Facebook"].includes(platform)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid platform"
+      });
+    }
+
+    if (!caption || !caption.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Caption is required"
+      });
+    }
+
+    const posts = readPosts();
+
+    const post = {
+      id: crypto.randomUUID(),
+      platform,
+      caption: caption.trim(),
+      photo: req.file ? `/uploads/${req.file.filename}` : null,
+      scheduledAt: scheduledAt || null,
+      status: "draft",
+      createdAt: new Date().toISOString()
+    };
+
+    posts.push(post);
+    savePosts(posts);
+
+    res.status(201).json({
+      success: true,
+      message: "Draft saved successfully!",
+      post
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Could not save post"
+    });
+  }
+});
+
+// Get all posts
+app.get("/api/posts", (req, res) => {
+  res.json({
+    success: true,
+    posts: readPosts()
+  });
+});
+
+// Get one post
+app.get("/api/posts/:id", (req, res) => {
+  const post = readPosts().find(p => p.id === req.params.id);
+
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
+  }
+
+  res.json(post);
+});
+
+// Delete a post
+app.delete("/api/posts/:id", (req, res) => {
+  const posts = readPosts();
+  const post = posts.find(p => p.id === req.params.id);
+
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
+  }
+
+  const updatedPosts = posts.filter(p => p.id !== req.params.id);
+  savePosts(updatedPosts);
+
+  if (post.photo) {
+    const imagePath = path.join(__dirname, post.photo);
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+  }
+
+  res.json({
+    success: true,
+    message: "Post deleted successfully!"
+  });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  res.status(400).json({
+    success: false,
+    message: err.message
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
